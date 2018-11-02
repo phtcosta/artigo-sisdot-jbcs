@@ -55,6 +55,67 @@
 %\usepackage[applemac]{inputenc} %applemac support if unicode package fails
 %\usepackage[latin1]{inputenc} %UNIX support if unicode package fails
 
+\usepackage{xspace}
+\usepackage{lstcustom}
+
+\lstdefinelanguage{Xtext}[]{Java}{
+	morekeywords={grammar, with, hidden, generate, as, import, returns, current, terminal, enum},
+	keywordstyle=[2]{\textbf},
+	morestring=[b]",
+	tabsize=3
+}
+\newcommand{\lstXtext}[1]{\lstinline[breaklines=true,language=Xtext,basicstyle=\listingsfontinline,mathescape,literate={\-}{}{0\discretionary{-}{}{}}]\S#1\S}
+
+
+\lstdefinelanguage{DRL}[]{Java}{
+	morekeywords={rule, when, from, accumulate, and, in, then, for, int, end},
+	keywordstyle=[2]{\textbf},
+	morecomment=[l]{//}, 
+	morecomment=[s]{/*}{*/}, 
+	morestring=[b]",
+	tabsize=2
+}
+
+\lstdefinelanguage{Freemarker}[]{Java}{
+	morekeywords={if, assign, else},
+	keywordstyle=[2]{\textbf},
+	morecomment=[l]{//}, 
+	morecomment=[s]{/*}{*/}, 
+	morestring=[b]",
+	showspaces=false,
+	tabsize=2
+}
+
+\lstdefinelanguage{DSL}[]{Java}{
+	morekeywords={rule, type, materials, conditions, cond, values},
+	keywordstyle=[2]{\textbf},
+	morecomment=[l]{//}, 
+	morecomment=[s]{/*}{*/}, 
+	morestring=[b]",
+	showspaces=false,
+	tabsize=2
+}
+
+\lstdefinelanguage{Cucumber}[]{Java}{
+	morekeywords={Feature, Scenario, Given, And, When, Then},
+	keywordstyle=[2]{\textbf},
+	morecomment=[l]{//}, 
+	morecomment=[s]{/*}{*/}, 
+	morestring=[b]",
+	showspaces=false,
+	tabsize=2
+}
+
+\lstdefinelanguage{Plugin}[]{Java}{
+	morekeywords={plugin, groupId, artifactId, version, executions, execution, id, configuration, seed, qcs, goals, goal},
+	keywordstyle=[2]{\textbf},
+	morecomment=[l]{//}, 
+	morecomment=[s]{/*}{*/}, 
+	morestring=[b]",
+	showspaces=false,
+	tabsize=2
+}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                             %%
@@ -71,7 +132,6 @@
 %%                                             %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
 \def\includegraphic{}
 \def\includegraphics{}
 
@@ -84,6 +144,11 @@
 
 %%% Begin ...
 \begin{document}
+
+\newcommand{\callers}{\emph{high-level rules}\xspace}
+\newcommand{\shc}{HLR\xspace}
+\newcommand{\hlrdsl}{\textsc{HLRDsl}\xspace}
+
 
 %%% Start of article front matter
 \begin{frontmatter}
@@ -241,6 +306,193 @@ In this paper we present the main design and architectural decisions to build an
 %%%%%%%%%%%%%%%%
 %% Background %%
 %%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Introduction 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Introduction}\label{sec:Introduction}
+One of the logistics' phases to distribute equipment to an army force contemplates the \emph{distribution planning} of materials throughout military unities. This phase is known as \emph{material endowment}, and involves several steps, including the specification of 
+relevant materials, often independent of vendor; the definition of rules that link military materials and equipment's to organizational unities (e.g., departments, regiments, and military posts); the execution of the rules for deriving the materials originally intended for each \emph{abstract military unit}; and the designation of the materials that must be actually distributed to the \emph{concrete military organizations}, which may suffer variations due to the inclusion and suppression of positions for a particular organizational unit of an army force. In the context of this paper, the reader might consider the scenario of the Brazilian Army. 
+
+Decision support systems are essential in this domain, given the importance and complexity of the processes related to the allocation of military employment materials. In particular, the rules used to predict military materials and equipment are not trivial, and implementing these rules directly in the source code makes the systems difficult to understand and maintain. This problem mostly occurs because the number of conditions that need to be expressed is proportional to the complexity of the organizational structure and the number of materials. In the case of an entire army force, this number is noteworthy. In addition, a ``\emph{hard-coding}'' solution does not allow domain experts to trivially specify and test new derivation rules. For these reasons, it is preferably to implement these rules declaratively, using languages, tools, or libraries that support some sort of inference mechanism.
+
+Nevertheless, introducing either a logic language (e.g., Prolog or Datalog) or a specific library (such as  Drools~\cite{browne2009}) in a complex enterprise system may lead to some type of \emph{architectural conflict}, particularly in environments whose whole ecosystem system is well established and based on a set of constraints related to both language and libraries usage. Furthermore, these solutions require a reasonable learning curve, which can hamper software maintenance activities.
+
+This article describes the main design and architectural decisions adopted to implement the mechanisms that assist decision makers to plan the distribution of military materials and equipment across the organizational structure of the Brazilian Army. These decisions aim to both (a) abstract the adoption of a business rule engine using {\bf meta-programming} and (b) allow domain experts to simulate the definition and testing of rules using 
+a {\bf domain specific language}. Accordingly, this paper presents the following contributions:
+
+\begin{itemize}
+	\item A description of the use of generative programming techniques to raise the abstraction level 
+	related to the adoption of a logic programming language in the specification of rules for the 
+	distribution of materials and equipment through organizational unities.
+	\item A report of an empirical evaluation of our design and architectural decisions, reinforcing that they fulfill not only the needs of the domain specialists, but also existing technical constraints. 	
+\end{itemize} 
+
+Although we discuss the distribution of materials and equipment for the military domain (which is far from trivial), we believe that the architectural decisions discussed here can be exploited to other logistics and endorsements scenarios in which it is also desirable to transparently introduce the support for rule based engines in enterprise systems.
+
+We organized this article as follows. Section \ref{sec:logistics} presents the concepts 
+related to the domain of material logistics. Section~\ref{sec:rbs} presents the concepts 
+related to business rules and rule based engines and Section~\ref{sec:gp} presents some 
+background information related to \emph{generative programming}---techniques that we use to support the design and implementation of our approach. Section~\ref{sec:architecture} presents the main design and architectural decisions we take to develop the mechanism responsible for the distribution of materials. In Section~\ref{sec:case_study} we present the results of an empirical study that validate our approach. Finally, Section~\ref{sec:related} and Section~\ref{sec:conclusao} relate our work with the exising literature and present some final remarks. 
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Technical Background
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Technical Background}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Military Logistics Systems
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection*{Military Logistics Systems}
+\label{sec:logistics}
+
+Military Logistics is the method used to implement military strategies and tactics as a method to gain 
+competitive advantage~\cite{rutner2012}. Logistics is defined as the art of moving armies, as well as accommodating and supplying the military~\cite{prebilic2006}. Strategy and tactics provide the framework for conducting military operations, while logistics provides the means. In the context of this paper, we are more interested in the supplying aspects of logistics, which refers to the set of activities that deals with the  provisioning of the material of different classes (including vehicles, armaments, munition, uniform, and fuel) necessary to the military unities (including a rich organizational structure and a huge number of soldiers). 
+
+In order to facilitate the administration and control of materials and equipment, the Brazilian Army uses a 
+catalog system that is similar to one defined by the North Atlantic Treaty Organization (OTAN)~\cite{otan2012}, which classifies items into groups and classes. The Brazilian Army catalog uses a classification that considers the \emph{type}, \emph{class}, and \emph{family} of the materials, ignoring some details (such as specific brands and suppliers). More detailed information is considered by 
+other areas of the logistic system. Several rules govern the identification of materials and equipment, 
+to avoid duplication and simplify the process of decision making. A logistic system is the integrated set of organizations, personnel, principles, and technical standards intended to provide the adequate flow for supplying materials~\cite{brasil2003}. This is a complex system, and thus must be organized in different modules. 
+
+In this paper we present the main design and architectural decisions related to one of the modules (SISDOT) of the \emph{Integrated Logistics System} (SIGELOG) of the Brazilian Army. SISDOT deals with the identification of the necessary materials and equipment (hereafter MEMs) for the organizational unities of the Brazilian Army. Each organizational unity is a combination of a set of \emph{generic organizations of specific types}, which describes the expected number of military unities of an organization (including armies, divisions, brigades, and so on). The goal of SISDOT is to estimate the set of MEMs that should be assigned to a generic organization, producing one of its main products (named QDM). Based on a set of QDMs, SISDOT then derives another estimate of MEMs that should be assigned to a concrete organizational unity (a QDMP). 
+
+Before generating a QDM, it is necessary to catalog all relevant MEMs to a given class of materials and then specify \callers (HLRs) that relate MEMs to the generic organizational unities, considering different elements of the structure---from the type of the unity and sub-unities to the qualifications of a soldier. That is, it is possible to elaborate a \shc that states that a military ambulance would be assigned to all \emph{drivers within medical unities}. Differently, it is also possible to state that an automatic rifle will be assigned to all \emph{sergeant that has been qualified as a shooter}. There is some degree of flexibility for writing these rules, that might be from two different kinds: rules that consider the entire structure of the Brazilian Army and rules that refer to specific elements of the organizational 
+structure. The former details rules that are more specific for a set of military qualifications. The second allows the generation of rules that might be reused through different unities. 
+
+Deriving QDMs and QDMPs is not trivial and its complexity is due to several factors, including the rich organizational structure of the Brazilian Army, the huge number of existing functions and qualifications that must be considered, and the reasonable number of MEMs. The process might also vary depending on the class of the materials. Moreover, it is possible to specify the \callers in different ways, which in the end might interact to each other leading to undesired results (e.g., the same material being assigned several times to a given soldier). 
+
+Due to number of logical decisions, using an imperative language to implement the process of QDM generation 
+is not an interesting choice. However, the SIGELOG architecture constraints the development to use the Java Enterprise Edition platform---so we had little space to introduce a more suitable language (such as Prolog) to generate QDMs. Other constraints guided the architectural decisions of SISDOT, including:  
+
+\begin{itemize}
+	\item Maintenance: the set of languages and libraries are limited to those already used in the SIGELOG development.  
+	\item Performance: considering a total of 1000 \callers, the system must be able to generate a QDM in less than 10 seconds.
+	\item Testing: the technical decisions must not compromise the testability of the system, being expected a high degree of automated tests. 
+\end{itemize}
+
+To deal with the first constraint, we decided to use a meta-programming approach that derives 
+\emph{low-level rules} for Drools (a rule based engine for Java) \emph{on the fly}, from a set of \callers represented as domain objects that must exist in a database. In this way, it is not necessary to understand 
+the language used to specify rules in Drools. Surely, although this approach increases flexibility and  
+allows us to externalize the \emph{low-level rules}, it might introduce some undesired effect on 
+the performance of the system: we generate all low-level rules every time a QDM is built. We are using 
+a cache mechanism and performance tests (as we discuss in Section~\ref{sec:case_study}) 
+shows that our architecture fulfills the second constraint. For the third constraint, we implemented a DSL that simplifies the specification and execution of test cases. 
+
+In the next sections (Section~\ref{sec:rbs} and Section~\ref{sec:gp}) we introduce some technical background that might help the reader to understand the design and architectural decisions we take while implementing SISDOT.  
+
+%% \subsection{Software Architecture}
+
+%% % Arquitetura de software se tornou mais ampla e complexa devido às características dos sistema atuais, tais como: distribuídos e interconectados, escaláveis horizontalmente e prontos para um ambiente de computação em nuvem, publicados automaticamente em ambientes diversos, atualizáveis com mínimo de downtime, resilientes e adaptativos \cite{hohpe2016}. Há também uma diferença em relação à abordagem tradicional, que trata a arquitetura como um conjunto de componentes e conectores, ao tratar a arquitetura como um conjunto de decisões arquiteturais realizadas no sistema \cite{bosch2004}, \cite{jansen2005}.
+
+%% Software architecture has become more extensive and complex due to the characteristics of the current systems, such as: distributed and interconnected, scalable horizontally and ready for a cloud computing environment, automatically published in diverse, updatable environments with minimal downtime, resilient and adaptive \cite{hohpe2016}. There is also a difference from the traditional approach, which treats architecture as a set of components and connectors, by treating architecture as a set of architectural decisions made in the system \cite{bosch2004}, \cite{jansen2005}.
+
+%% % Arquitetura de software é um conjunto de estruturas necessárias para raciocinar sobre um sistema, que compreendem elementos de software, relações entre eles e propriedades de ambos \cite{bass2013software}. Existem três categorias de estruturas arquiteturais \cite{clements2011documenting}, \cite{bass2013software}. A arquitetura de software está relacionada diretamente aos atributos de qualidade do sistema; permite raciocinar sobre o impacto de mudanças enquanto o sistema evolui; a documentação da arquitetura melhora a comunicação entre os interessados e serve como base de treinamento de novos membros da equipe; serve como uma receita para a implementação do sistema; ajuda no planejamento de custos e cronograma de atividades; possibilita o reuso de soluções \cite{bass2013software}. 
+
+%% Software architecture is a set of structures necessary to reason about a system, which comprise elements of software, relations between them and properties of both \cite{bass2013software}. There are three categories of architectural structures \cite{clements2011documenting}, \cite{bass2013software}. The software architecture is directly related to the quality attributes of the system; it allows to reason about the impact of changes as the system evolves; architecture documentation improves communication among stakeholders and serves as a training base for new team members; serves as a recipe for the implementation of the system; help with cost planning and schedule of activities; enables the reuse of solutions \cite{bass2013software}.
+
+%% % Os atributos de qualidade considerados relevantes para a arquitetura proposta neste trabalho são: 
+
+%% The quality attributes considered relevant for the architecture proposed in this work are:
+
+%% \begin{itemize}
+
+%% % \item Simplicidade na definição das regras de distribuição de materiais, transformando definições de alto nível  em definições baseadas em regras de motor de inferência, o que facilita a manutenção e extrai tais definições do código fonte de uma aplicação. Isso motivou o uso de programação generativa (em termos de meta programação) e um motor de inferência específico para a linguagem Java;
+
+%% \item Simplicity in defining material distribution rules by transforming high-level definitions into definitions based on inference engine rules, which facilitates maintenance and extracts such definitions from the source code of an application. This motivated the use of generative programming (in terms of meta programming) and an inference engine specific to the Java language;
+
+%% % \item Facilidade para execução de testes automatizados, motivando a definição de uma Domain-Specific Languages (DSL) para descrever conceitos relacionados à dotação de materiais para o Exército Brasileiro. A partir DSL, são gerados casos de testes baseados em ``especificações executáveis'' e classes que instanciam objetos do domínio. 
+
+%% \item Ease of execution of automated tests, motivating the definition of a Domain-Specific Languages (DSL) to describe concepts related to the endowment of materials for the Brazilian Army. From DSL, test cases are generated based on ``executable specifications'' and classes that instantiate objects of the domain.
+
+%% \end{itemize}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Rule Based Systems
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection*{Rule Based Systems}
+\label{sec:rbs}
+The process for deriving QDMs consists of applying a set of business rules that relates MEMs to the organizational structure of the Brazilian Army. In this paper, we named this set of business rules as \callers. A business rule is a compact, atomic, and well-formed statement about an aspect of the business that can be expressed in terms that may be directly related to the business and its employees using a simple and unambiguous language that might be accessible to all stakeholders~\cite{graham2007business}. This type of structure is very important for organizations, as they need to deal more and more with complex scenarios. These scenarios consist of a large number of individual decisions, working together to provide a 
+complex assessment of the organization as a whole \cite{salatino2016mastering}.
+
+Rule Based Systems (RBS), also known as production systems or expert systems, are the simplest form of artificial intelligence that help to design solutions that reason about and take actions from business rules (a feature that is interesting in the context of SISDOT), using rules such as knowledge representation~\cite{grosan2011}.Instead of representing knowledge in a declarative and static way as a set of things that are true, RBS represents knowledge in terms of a set of rules that tells what to do or what to accomplish in different situations~\cite{grosan2011}. RBS consist of two basic elements: a \emph{knowledge base} to store knowledge and an \emph{inference engine} that implements  algorithms to manipulate the knowledge represented in the knowledge base~\cite{grosan2011,DBLP:books/daglib/0070547,gallacher1989}.
+The knowledge base stores facts and rules~\cite{DBLP:journals/cacm/Hayes-Roth85}. a fact is a usually static statement about properties, relations, or propositions~\cite{DBLP:journals/cacm/Hayes-Roth85} and should be something relevant to the initial state of the system~\cite{grosan2011}. A rule is a conditional statement that links certain conditions to actions or results \cite{abraham2005}, being able to express 
+policies, preferences, and constraints. Rules can be used to express deductive knowledge, such as logical relationships, and thus support inference, verification, or evaluation tasks~\cite{DBLP:journals/cacm/Hayes-Roth85}.
+
+A rule ``if-then'' takes a form like \emph{``if x is A then take a set of actions''}. The conditional part is known as antecedent, premise, condition, or left-hand-side (LHS). The other part is known as consequent, conclusion, action, or right-hand-side (RHS)~\cite{grosan2011,abraham2005}. Rule-based systems works as follows~\cite{grosan2011}: it starts with a knowledge base, which contains all appropriate knowledge coded using ``if-then'' rules, and a working memory, which contain all data, assertions, and information initially known. 
+
+The system examines all rule conditions (LHS) and determines a subset of rules whose conditions are satisfied, based on the data available at the working memory. From this information set, some of the rules are triggered. The choice of rules is based on a conflict resolution strategy. When the rule is triggered, 
+all actions specified in its \texttt{then} clause (RHS) are executed. These actions can modify the 
+working memory, the rule base itself, or take whatever action that the system programmer chooses to include. This \emph{trigger rule loop} continues until a termination criterion is met. This end criterion can be given by the fact that there are no more rules whose conditions are satisfied or a rule 
+is triggered whose action specifies that the program should be finalized.
+
+Drools is an example of a business logic integration platform (BLiP) written in the Java programming language and that fits some requirements of SISDOT (in particular, its integration with Java and the Wildfly application server). We use Drools as the \emph{rule-based system} in the QDM generation. However, to abstract the use of a RBS, we generate the Drools rules using a meta-programming approach, a specific technique for \emph{generative programming}. 
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Generative Programming
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection*{Generative Programming}
+\label{sec:gp}
+Generative Programming (GP) is related to the design and implementation of software components that can be combined to generate specialized and highly optimized systems, fulfilling specific requirements~\cite{DBLP:phd/dnb/Czarnecki99}. With this approach, instead of developing solutions from scratch, domain-specific solutions are generated from reusable software components \cite{arora2009}. GP is applied on the manufacturing of software products from components in a system in an automated way (and within economic constraints), i.e., using an approach that is similar to that found in industries that have been producing mechanical, electronic, and other goods for decades \cite{barth2002}. The main idea in GP is similar to the one that led people to switch from Assembly languages to high-level languages. 
+
+In our context, we use GP to deal with two different aspects of SISDOT. First, we raise the level of abstraction by automatically generating low-level Drools rules from an existing set of \callers (previously defined by the domain experts). This is a type of \emph{meta-programming} based on template engines---we use a template to generate a set of facts and rules (which are the fundamental mechanisms of logic programming) from domain objects. We also raise the level of abstraction to assist developers in the specification and execution of test cases, using a domain specific language and a set of customized libraries and tools.  
+
+
+\subsubsection*{Metaprogramming and Template Engines}
+Metaprogramming concerns to the implementation of programs that generate other programs. In the context of SISDOT, we use a metaprogramming technique to generate programs that are interpreted by Drools. The main goal is to abstract the use of a specific language for implementing the \emph{low-level rules} used to generate QDMs. There are many different approaches for metaprogramming, including preprocessing, source to source transformations, and template engines. 
+A template engine is a generic tool for generating textual output from templates and data files. They can be used in the development of software that requires the automatic generation of code according to specific purposes~\cite{benato2017}. 
+
+The need for dynamically generated web pages has led to the development of numerous template engines in an effort to make web application development easier, improve flexibility, reduce maintenance costs, and enable parallel encoding and development using HTML like languages. 
+In addition to being widely used in dynamic web page generation, templates are used in other tasks, being one of the main techniques to generate source code from high level specifications. More recently, languages such as Clojure, Ruby, Scala, and Haskell adopted the use of template and \emph{quasiquote} mechanisms as a strategy for code reuse and program generation (some of them considering type systems).
+A template is a text document that combines placeholders and linguistic formulas used to describe something in a specific domain~\cite{segura2017}. 
+
+In this work we use the FreeMarker template engine, which is an open-source software designed to generate text from templates~\cite{radjenovic2009}. FreeMarker was chosen for several reasons, such as: it follows a general purpose model; it is faster than other template engines; it supports shared variables and model loaders; and its templates can be loaded or reloaded at runtime without the need to (re)compile the application~\cite{benato2017,parr2006}.
+
+
+\subsubsection*{Domain Specific Languages}
+A language is a set of valid sentences, serving as a mechanism for expressing intentions \cite{parr2010}. 
+Creating a new language is a time-consuming task, requires experience, and is usually performed by engineers specialized in languages construction~\cite{karsai2014}. To implement a language, one must construct an application that reads sentences and reacts appropriately to the phrases and input symbols it discovers.
+The need for new languages for many growing domains is increasing, as well as the emergence of more sophisticated tools that allow software engineers to define a new language with reasonable effort. As a result, a growing number of DSLs are being developed to increase developer productivity within specific domains~\cite{karsai2014}. 
+
+
+Domain Specific Languages (DSL) are specification languages or programming languages with high level of abstraction, simple and concise \cite{raja2010}, focused on specific domains, and are designed to facilitate the construction of applications, usually declaratively, with limited expressiveness lines of code, which solve these specific problems \cite{neeraj2017}. 
+A DSL is a computer language of limited expressiveness, through appropriate notations and abstractions, focused and generally restricted to a specific problem domain \cite{fowler2013,vanDeursen2000}. DSLs have the potential to reduce the complexity of software development by increasing the level of abstraction for a domain.
+According to the application domain, different notations (textual, graphical, tabular) are used \cite{pfeiffer2008}.
+
+
+In this work we used Xtext ~\cite{eysholdt2010} (a language workbench) to implement a DSL that helps
+developers to specify and execute test cases related to the process of QDM generation. The main rationale to building this DSL was the significant costs related to specifying \callers (particularly during acceptance tests). In the next section we present more details about our architectural decisions and implementation of our metaprogramming and DSL approach, which deals with the generation and test of QDMs. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 \section*{Content}
 Text and results for this section, as per the individual journal's instructions for authors. %\cite{koon,oreg,khar,zvai,xjon,schn,pond,smith,marg,hunn,advi,koha,mouse}
 
